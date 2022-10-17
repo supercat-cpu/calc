@@ -1,66 +1,128 @@
-#словарь с операторами
 OPERATORS = {'+': (1, lambda x, y: x + y), '-': (1, lambda x, y: x - y),
              '*': (2, lambda x, y: x * y), '/': (2, lambda x, y: x / y)}
 
-#наша функция eval()
-def eval_(formula_string):
 
-    #парсер исходной строки
+def eval_(formula_string):
+    """
+    Analog of eval() built-in function
+
+    Parameters
+    ----------
+    formula_string: str
+        mathematical expression
+
+    Returns
+    -------
+    result of mathematical expression in float type
+    """
+
+    def preparse(formula_string):
+        """
+        Checking signs and inserting '0' in front of unary minus.
+
+        Parameters
+        ----------
+        formula_string: str
+            mathematical expression
+
+        Returns
+        -------
+        preparsed expression in str type
+        """
+        formula_list = [s for s in formula_string if s != ' ']
+        new = ''
+        for counter, s in enumerate(formula_list):
+            if s not in '1234567890.+-*/()':
+                raise Exception('DO NOT UNDERSTAND YOUR QUERY! PLEASE USE APPROPRIATE SYMBOLS')
+            elif s != '-':
+                new += s
+            elif counter == 0 and s == '-':
+                new += '0-'
+            elif s == '-' and (formula_list[counter - 1] in OPERATORS or formula_list[counter - 1] in '()'):
+                new += '0-'
+        return new
+
     def parse(formula_string):
+        """
+        Generator parsing of the original expression into numbers, scoops and signs
+
+        Parameters
+        ----------
+        formula_string: str
+            mathematical expression
+
+        Returns
+        -------
+        yields number, scoop or sign to stack in str or float type
+        """
         number = ''
         for s in formula_string:
-            if s in '1234567890.':  # если символ - цифра, то собираем число
+
+            if s in '1234567890.':
                 number += s
-            elif number:  # если символ не цифра, то выдаём собранное число и начинаем собирать заново
+            elif number:
                 yield float(number)
                 number = ''
-            if s in OPERATORS or s in "()":  # если символ - оператор или скобка, то выдаём как есть
+            if s in OPERATORS or s in "()":
                 yield s
-        if number:  # если в конце строки есть число, выдаём его
+        if number:
             yield float(number)
 
-    #алгоритм сортировочний станции
     def shunting_yard(parsed_formula):
-        stack = []  # в качестве стэка используем список
+        """
+        Shunting yard algorythm.
+
+        Parameters
+        ----------
+        parsed_formula: Union[str, float]
+            return of parse function
+
+        Returns
+        -------
+        yields number, scoop or sign to stack in str or float type
+        """
+        stack = []
         for token in parsed_formula:
-            # если элемент - оператор, то отправляем дальше все операторы из стека,
-            # чей приоритет больше или равен пришедшему,
-            # до открывающей скобки или опустошения стека.
-            # здесь мы пользуемся тем, что все операторы право-ассоциативны
             if token in OPERATORS:
                 while stack and stack[-1] != "(" and OPERATORS[token][0] <= OPERATORS[stack[-1]][0]:
                     yield stack.pop()
                 stack.append(token)
             elif token == ")":
-                # если элемент - закрывающая скобка, выдаём все элементы из стека, до открывающей скобки,
-                # а открывающую скобку выкидываем из стека.
                 while stack:
                     x = stack.pop()
                     if x == "(":
                         break
                     yield x
             elif token == "(":
-                # если элемент - открывающая скобка, просто положим её в стек
                 stack.append(token)
             else:
-                # если элемент - число, отправим его сразу на выход
                 yield token
         while stack:
             yield stack.pop()
 
-    #вычислитель
     def calc(polish):
+        """
+        Evaluation of expression using stack.
+
+        Parameters
+        ----------
+        polish: list
+            stack
+
+        Returns
+        -------
+        result of operation in float type
+        """
         stack = []
         for token in polish:
-            if token in OPERATORS:  # если приходящий элемент - оператор,
-                y, x = stack.pop(), stack.pop()  # забираем 2 числа из стека
-                stack.append(OPERATORS[token][1](x, y))  # вычисляем оператор, возвращаем в стек
+            if token in OPERATORS:
+                y, x = stack.pop(), stack.pop()
+                try:
+                    stack.append(OPERATORS[token][1](x, y))
+                except ZeroDivisionError:
+                    return 'DO NOT DIVIDE BY ZERO! IT IS FORBIDDEN, STUPIDO!'
             else:
                 stack.append(token)
-        return stack[0]  # результат вычисления - единственный элемент в стеке
+        return stack[0]
 
-    return calc(shunting_yard(parse(formula_string)))
-
-
-#print(eval_('((1 *(2 + 3) + 3.5))'))
-print(eval_('-1'))
+    return calc(shunting_yard(parse(preparse(formula_string))))
